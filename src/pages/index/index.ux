@@ -1,0 +1,238 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <div class="sync-btn" onclick="syncNotes">
+        <text class="sync-text">{{ syncing ? "Syncing..." : "↻ Sync Notes" }}</text>
+      </div>
+      <text if="{{statusText}}" class="status-text">{{ statusText }}</text>
+    </div>
+
+    <div if="{{notes.length === 0}}" class="empty-box">
+      <text class="empty-text">No cached notes</text>
+      <text class="empty-hint">Tap Sync Notes to fetch</text>
+    </div>
+
+    <list if="{{notes.length > 0}}" class="notes-list">
+      <list-item for="{{notes}}" class="note-item" type="note" onclick="openNote($idx)">
+        <div class="note-row">
+          <div class="note-accent"></div>
+          <text class="note-title">{{ $item.title }}</text>
+        </div>
+      </list-item>
+    </list>
+  </div>
+</template>
+
+<script>
+import fetch from "@system.fetch"
+import storage from "@system.storage"
+import router from "@system.router"
+
+var NOTES_URL = "http://127.0.0.1:8765/notes.json"
+var STORAGE_KEY = "saved_notes"
+
+function parseNotes(raw) {
+  if (!raw) return []
+  try {
+    var data = typeof raw === "string" ? JSON.parse(raw) : raw
+    var items = Array.isArray(data)
+      ? data
+      : data && Array.isArray(data.notes)
+        ? data.notes
+        : null
+    if (!items) return null
+    var result = []
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i]
+      if (!item || typeof item !== "object") continue
+      result.push({
+        title: item.title ? String(item.title) : "Untitled",
+        body: item.body ? String(item.body) : ""
+      })
+    }
+    return result
+  } catch (e) {
+    return null
+  }
+}
+
+export default {
+  private: {
+    notes: [],
+    syncing: false,
+    statusText: ""
+  },
+
+  onInit() {
+    this.loadCachedNotes()
+  },
+
+  loadCachedNotes() {
+    var self = this
+    storage.get({
+      key: STORAGE_KEY,
+      success(data) {
+        if (!data) return
+        var parsed = parseNotes(data)
+        if (parsed !== null) {
+          self.notes = parsed
+        }
+      },
+      fail(data, code) {
+        console.log("storage.get failed:", code, data)
+      }
+    })
+  },
+
+  syncNotes() {
+    if (this.syncing) return
+    var self = this
+    self.syncing = true
+    self.statusText = ""
+
+    fetch.fetch({
+      url: NOTES_URL,
+      responseType: "text",
+      success(res) {
+        self.syncing = false
+        if (res && typeof res.code === "number" && (res.code < 200 || res.code >= 300)) {
+          self.statusText = "HTTP " + res.code
+          return
+        }
+        var rawData = res ? res.data : ""
+        var parsed = parseNotes(rawData)
+        if (parsed === null) {
+          self.statusText = "Invalid JSON"
+          return
+        }
+        self.notes = parsed
+        self.statusText = parsed.length + " note" + (parsed.length === 1 ? "" : "s")
+        var jsonStr = typeof rawData === "string" ? rawData : JSON.stringify(parsed)
+        storage.set({
+          key: STORAGE_KEY,
+          value: jsonStr,
+          fail(errData, errCode) {
+            console.log("storage.set failed:", errCode, errData)
+          }
+        })
+      },
+      fail(errData, errCode) {
+        self.syncing = false
+        self.statusText = "Sync failed" + (errCode ? " (" + errCode + ")" : "")
+        console.log("fetch failed:", errCode, errData)
+      }
+    })
+  },
+
+  openNote(index) {
+    var note = this.notes[index]
+    if (!note) return
+    router.push({
+      uri: "/pages/detail",
+      params: {
+        title: note.title,
+        body: note.body
+      }
+    })
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 240px;
+  height: 240px;
+  flex-direction: column;
+  background-color: #000000;
+  padding: 24px 20px;
+}
+
+.header {
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 6px;
+}
+
+.sync-btn {
+  width: 132px;
+  height: 30px;
+  border-radius: 15px;
+  background-color: #1e3a5f;
+  justify-content: center;
+  align-items: center;
+}
+
+.sync-text {
+  font-size: 13px;
+  font-weight: bold;
+  color: #ffffff;
+  text-align: center;
+}
+
+.status-text {
+  margin-top: 3px;
+  font-size: 10px;
+  color: #8ab4f8;
+  text-align: center;
+}
+
+.empty-box {
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.empty-text {
+  font-size: 14px;
+  color: #bdbdbd;
+  text-align: center;
+}
+
+.empty-hint {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #757575;
+  text-align: center;
+}
+
+.notes-list {
+  flex: 1;
+  width: 100%;
+}
+
+.note-item {
+  height: 44px;
+  width: 100%;
+  margin-top: 2px;
+  margin-bottom: 2px;
+  border-radius: 10px;
+  background-color: #161822;
+  padding-left: 10px;
+  padding-right: 10px;
+  align-items: center;
+}
+
+.note-row {
+  flex-direction: row;
+  align-items: center;
+  flex: 1;
+}
+
+.note-accent {
+  width: 3px;
+  height: 20px;
+  border-radius: 2px;
+  background-color: #4fc3f7;
+  margin-right: 8px;
+}
+
+.note-title {
+  flex: 1;
+  font-size: 15px;
+  font-weight: bold;
+  color: #ffffff;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+</style>

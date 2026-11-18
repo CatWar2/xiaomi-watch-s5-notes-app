@@ -1,0 +1,11 @@
+node_modules/
+dist/
+build/
+android-app/build/
+android-app/debug.keystore
+phone-server/notes.json
+*.rpk
+*.apk
+*.idsig
+*.keystore
+.DS_Store

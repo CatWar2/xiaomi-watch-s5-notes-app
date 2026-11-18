@@ -1,0 +1,125 @@
+<template>
+  <div class="page">
+    <div class="header" onclick="goBack">
+      <text class="back-title">‹ {{ title || "Note" }}</text>
+    </div>
+
+    <list class="body-list">
+      <list-item for="{{lines}}" class="line-item" type="line">
+        <text class="line-text">{{ $item }}</text>
+      </list-item>
+    </list>
+  </div>
+</template>
+
+<script>
+import router from "@system.router"
+
+function wrapText(text, maxChars) {
+  var limit = maxChars || 26
+  if (!text) return [""]
+  var normalized = String(text).replace(/\r\n/g, "\n").replace(/\r/g, "\n")
+  var paragraphs = normalized.split("\n")
+  var lines = []
+
+  for (var i = 0; i < paragraphs.length; i++) {
+    var para = paragraphs[i].trim()
+    if (para === "") {
+      lines.push("")
+      continue
+    }
+    var words = para.split(/\s+/)
+    var current = ""
+    for (var w = 0; w < words.length; w++) {
+      var word = words[w]
+      while (word.length > limit) {
+        if (current !== "") {
+          lines.push(current)
+          current = ""
+        }
+        lines.push(word.slice(0, limit))
+        word = word.slice(limit)
+      }
+      if (current === "") {
+        current = word
+      } else if (current.length + 1 + word.length <= limit) {
+        current = current + " " + word
+      } else {
+        lines.push(current)
+        current = word
+      }
+    }
+    if (current !== "") {
+      lines.push(current)
+    }
+  }
+
+  return lines.length > 0 ? lines : [""]
+}
+
+export default {
+  protected: {
+    title: "",
+    body: ""
+  },
+
+  private: {
+    lines: []
+  },
+
+  onInit() {
+    this.lines = wrapText(this.body, 26)
+  },
+
+  goBack() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 240px;
+  height: 240px;
+  flex-direction: column;
+  background-color: #000000;
+  padding: 26px 22px;
+}
+
+.header {
+  justify-content: center;
+  align-items: center;
+  padding-left: 14px;
+  padding-right: 14px;
+  padding-bottom: 8px;
+  border-bottom-width: 1px;
+  border-bottom-color: #242938;
+}
+
+.back-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #4fc3f7;
+  lines: 1;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+.body-list {
+  flex: 1;
+  width: 100%;
+  padding-top: 6px;
+}
+
+.line-item {
+  height: 22px;
+  width: 100%;
+  align-items: center;
+}
+
+.line-text {
+  font-size: 13px;
+  color: #e8eaed;
+  lines: 1;
+}
+</style>
