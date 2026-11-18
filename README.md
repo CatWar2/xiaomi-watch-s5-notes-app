@@ -1,3 +1,6 @@
+!!!!Note: The code in this repo was generated with AI assistance (Gemini) and tested on real hardware (Xiaomi Watch S5 + Xiaomi 15 on HyperOS).!!!!!
+
+
 # Watch Notes — Offline Notes Sync for Xiaomi Watch S5
 
 A Xiaomi Vela JS Quick App for the **Xiaomi Watch S5** (`480x480` round screen, `designWidth: 240`) paired with a lightweight **Android companion app** (no Android Studio / Gradle needed) and an optional Python 3 server.
